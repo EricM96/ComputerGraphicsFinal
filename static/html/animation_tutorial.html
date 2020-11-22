@@ -1,0 +1,246 @@
+<h1>Intro to Animations in WebGL</h1>
+
+<p>
+    This lesson is intended to introduce users to basic animation in WebGL. A lot of the information in this tutorial 
+    builds on the concepts presented in the "Smiley Face Tutorial," and assumes the user understands how to create 2d objects in WebGL, 
+    so I recommend you check that one out first. 
+</p>
+<p>
+    This tutorial also builds on concepts presented in the following MDN articles: 
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Getting_started_with_WebGL">Intro</a><span>,</span>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/clearColor">clearColor</a><span>,</span>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Adding_2D_content_to_a_WebGL_context">Intro to 2D</a><span>,</span>
+    <a href=https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Tutorial/Animating_objects_with_WebGL>Animations</a>
+</p>
+<h2>Step 1 - Initial Setup</h2>
+<p>
+    Before creating your shape, get the canvas and its context. Then create vertex and fragment shaders. 
+    For more explanation on how and why this is done, refer to the "Smiley Face Tutorial." Add the following code to the
+    main function:
+</p>
+
+<pre><code>
+    const canvas = document.querySelector("#canvas");
+    const gl = canvas.getContext("webgl");
+
+    if (gl === null) {
+        alert("Couldn't initialize WebGL. Your browser may not support it");
+        return
+    }
+
+    const vsSource = `
+        attribute vec4 aVertexPosition;
+
+        uniform mat4 uModelViewMatrix;
+        uniform mat4 uProjectionMatrix;
+
+        void main() {
+            gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+        }
+    `;
+
+    const fsSource = `
+        void main() {
+            gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+        }
+    `;
+
+    const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+
+    const programInfo = {
+        program: shaderProgram,
+        attribLocations: {
+            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+        },
+        uniformLocations: {
+            projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+            modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+        },
+    };
+</code></pre>
+<h2>Step 2 - Instantiate the Buffers</h2>
+<p>
+    Next, instantiate the buffers, which is where you'll create the shape that you will 
+    be animating. Once again, for more explanation, visit the "Smiley Face Tutorial." For now, know 
+    this is where you will set the vertices of the shape you will be drawing. The provided code creates
+    a lightning bolt shape. First, add a function that creates a buffer (part A of step 2):
+</p>
+
+<pre><code>
+    function initBuffers(gl) {
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    
+        // Now create an array of positions for your desired shape
+    
+        const positions = [
+            -0.25, 1.0,
+            0.25, 1.0,
+            0.0, 0.25, 
+            0.5, 0.25,
+            -0.25, -1.0,
+            0.0, 0.0,
+            -0.5, 0.0
+        ];
+    
+        gl.bufferData(gl.ARRAY_BUFFER,
+            new Float32Array(positions),
+            gl.STATIC_DRAW);
+    
+        return {
+            position: positionBuffer,
+        };
+    }
+</code></pre>
+
+<p>
+    Then, create your buffer by calling that function in your main function:
+</p>
+
+<pre><code>
+    const buffers = initBuffers(gl);
+</code></pre>
+
+<h2>Step 3 - Draw Your Shape</h2>
+<p>
+    Now we need to draw a shape to animate. To do so, create a drawScene function as explained in "Smiley Face Tutorial."
+    Add this function to your program (part A of step 3):
+</p>
+<pre><code>
+    function drawScene(gl, programInfo, buffers, numVertices) {
+        gl.clearDepth(1.0);                 
+        gl.enable(gl.DEPTH_TEST);          
+        gl.depthFunc(gl.LEQUAL);            
+    
+        const fieldOfView = 45 * Math.PI / 180;   
+        const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+        const zNear = 0.1;
+        const zFar = 100.0;
+        const projectionMatrix = mat4.create();
+    
+        mat4.perspective(projectionMatrix,
+            fieldOfView,
+            aspect,
+            zNear,
+            zFar);
+    
+        const modelViewMatrix = mat4.create();
+    
+        mat4.translate(modelViewMatrix,    
+            modelViewMatrix,     
+            [-0.0, 0.0, -6.0]);        
+    
+        {
+            const numComponents = 2;  
+            const type = gl.FLOAT;    
+            const normalize = false;  
+            const stride = 0;         
+            const offset = 0;        
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
+            gl.vertexAttribPointer(
+                programInfo.attribLocations.vertexPosition,
+                numComponents,
+                type,
+                normalize,
+                stride,
+                offset);
+            gl.enableVertexAttribArray(
+                programInfo.attribLocations.vertexPosition);
+        }
+    
+        gl.useProgram(programInfo.program);
+    
+        gl.uniformMatrix4fv(
+            programInfo.uniformLocations.projectionMatrix,
+            false,
+            projectionMatrix);
+        gl.uniformMatrix4fv(
+            programInfo.uniformLocations.modelViewMatrix,
+            false,
+            modelViewMatrix);
+    
+        {
+            const offset = 0;
+            gl.drawArrays(gl.LINE_LOOP, offset, numVertices);
+        }
+    }
+</code></pre>
+
+<p>
+    Then call it in your main function (part B of step 3):
+</p>
+
+<pre><code>
+    drawScene(gl, programInfo, buffers, numVertices);
+</code></pre>
+
+<p>
+    If you've followed all of the steps up until this point, you should have a static shape displayed in your canvas.
+</p>
+
+<h2>Step 4 - Animate!</h2>
+<p>
+    It's finally time to add animations! We will animate our shape to rotate around the x, y, or z axis, or a combination of those 3.
+    To do so, we need a global variable to increment the shape's degree of rotation. We also need to keep track of how much time has
+    passed (step 4 part A):
+</p>
+
+<pre><code>
+    var rotation = 0.0;
+    var timePassed = 0.0;
+</code></pre>
+
+<p>
+    Then, in our drawScene function, we need to add code that will actually rotate our shape before drawing it. To do so, 
+    add a call to .rotate on mat4. The function call takes 4 parameters: a destination matrix and a matrix to rotate, 
+    (which will both be our modelViewMatrix containing the shape), a degree of rotation in radians, and the axis that 
+    you will be rotating on (x, y, x, or a combination). Add this call after the call to the initial translation (step 4 part B). 
+    In our example, we rotate the shape on x, y, and z axes by setting all to 1. To turn it off, set it to 0. 
+</p>
+
+<pre><code>
+    mat4.rotate(modelViewMatrix,  
+        modelViewMatrix,  
+        rotation,  
+        [1, 1, 1]);  
+</code></pre>
+
+<p>
+    As you can see, the call to .rotate uses the variable rotation to determine how many degrees to rotate the shape before rendering.
+    So, we need to constantly be updating the amount of rotation in our main function. To do so, we need to keep track of when we last 
+    rendered our animation. Add a variable called "then" to the end of your main function, and initialize it to 0. Then, we 
+    add a function to the end of our main function where the call to drawScene will occur. Adding it to the main function 
+    allows the rendering to occur over and over. In this function, we calculate the time passed since the last time we rendered
+    the shape, and then set "then" to "now". We call the drawScene function here, adding timePassed as an argument. Then, we call
+    requestAnimationFrame and pass it our new function for rendering our drawing. Doing so passes the current timestamp back to our function 
+    to render our drawing (step 4 part C):
+</p>
+
+<pre><code>
+    var then = 0;
+
+    // Render the shape over and over
+    function renderDrawing(now) {
+        now *= 0.001;  
+        timePassed = now - then;
+        then = now;
+
+        drawScene(gl, programInfo, buffers, numVertices, timePassed);
+
+        requestAnimationFrame(renderDrawing);
+    }
+    requestAnimationFrame(renderDrawing);
+</code></pre>
+
+<p>
+    Finally, we need to update the amount of rotation everytime we call drawScene. Add this to the end of the drawScene function (step 4 part D):
+</p>
+
+<pre><code>
+    rotation += timePassed;
+</code></pre>
+
+<p>
+    Congrats, you're done! For fun, try changing the axis that your shape rotates around. I recommend changing the axis and running your program
+    without clearing the canvas to see your animations layer.
+</p>
