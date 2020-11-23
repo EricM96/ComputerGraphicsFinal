@@ -61,24 +61,24 @@ def upload():
         solution = request.files['solution']
         starter = request.files['starter']
 
-#        try:
-#            tutorial = Tutorial(
-#                name=name,
-#                tutorial_file=html.filename,
-#                starter_file=starter.filename,
-#                solution_file=solution.filename
-#            )
-#
-#            db.session.add(tutorial)
-#            db.session.commit()
-#
-#            html.save(os.path.join(app.config['UPLOAD_DIR'], html.filename))
-#            solution.save(os.path.join(
-#                app.config['UPLOAD_DIR'], solution.filename))
-#            starter.save(os.path.join(
-#                app.config['UPLOAD_DIR'], starter.filename))
-#        except:  # noqa E722
-#            errors.append('Upload failed.')
+        try:
+            tutorial = Tutorial(
+                name=name,
+                tutorial_file=html.filename,
+                starter_file=starter.filename,
+                solution_file=solution.filename
+            )
+
+            db.session.add(tutorial)
+            db.session.commit()
+
+            html.save(os.path.join(app.config['UPLOAD_DIR'], html.filename))
+            solution.save(os.path.join(
+                app.config['UPLOAD_DIR'], solution.filename))
+            starter.save(os.path.join(
+                app.config['UPLOAD_DIR'], starter.filename))
+        except:  # noqa E722
+            errors.append('Upload failed.')
     return render_template(
         'upload.html',
         errors=errors
